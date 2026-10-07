@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Храм Солнечного камня 3D</title>
+<style>
+  :root{
+    --bg:#0d0907;--panel:#1d1612;--panel2:#2a201a;--ink:#f1e6d2;--mute:#a8957d;
+    --gold:#f2b544;--ember:#e8702a;--red:#d9472f;--line:#3a2c22;
+    --serif:Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+  body{min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#3a2414,var(--bg) 65%) fixed;background-color:var(--bg)}
+  .screen{display:none;max-width:860px;margin:0 auto;padding:12px}
+  .screen.active{display:block}
+  button{font:inherit;cursor:pointer;border:none;border-radius:12px;-webkit-tap-highlight-color:transparent}
+  .btn{background:linear-gradient(#f6c45c,#d9902a);color:#2a1606;font-weight:800;padding:15px 28px;font-size:1.05rem;box-shadow:0 4px 0 #8a5317}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8a5317}
+
+  .scroll{background:linear-gradient(#efdcb4,#e3c993);color:#3a2412;border-radius:8px;padding:24px 22px;margin:14px auto;box-shadow:0 18px 50px #000c;max-width:620px}
+  .scroll h1{font:700 1.9rem var(--serif);margin:0 0 4px;text-align:center}
+  .scroll .sub{text-align:center;font-style:italic;opacity:.75;margin-bottom:12px}
+  .scroll p{line-height:1.5;margin:10px 0}
+  .scroll ul{padding-left:20px;line-height:1.55;margin:8px 0}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-size:.92rem;margin:10px 0}
+  .center{text-align:center;margin-top:16px}
+
+  /* HUD */
+  .hud{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:8px}
+  .hud .it{display:flex;align-items:center;gap:5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .torchbar{flex:1 1 140px;display:flex;align-items:center;gap:8px}
+  .torchbar .bar{flex:1;height:10px;background:#000a;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+  .torchbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--ember),var(--gold))}
+  .torchbar.low i{background:var(--red)}
+
+  /* 3D-вид */
+  .viewwrap{position:relative;border-radius:12px;overflow:hidden;border:2px solid #4a3b31;box-shadow:0 10px 40px #000a;background:#000;touch-action:none}
+  #view{display:block;width:100%;aspect-ratio:16/10;image-rendering:pixelated;image-rendering:crisp-edges}
+  #mini{position:absolute;top:8px;right:8px;width:24%;max-width:150px;image-rendering:pixelated;border:1px solid #f2b54455;border-radius:4px;background:#000a;opacity:.9;pointer-events:none}
+  .vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,#c01a0a 130%);opacity:0;transition:opacity .25s}
+  .flash{position:absolute;inset:0;pointer-events:none;background:#d9472f;opacity:0;transition:opacity .35s}
+  .flash.on{opacity:.55;transition:none}
+  .cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#f2b54488;pointer-events:none}
+
+  .log{min-height:44px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:9px 12px;margin-top:8px;font-size:.95rem;line-height:1.4}
+  .log.warn{border-left-color:var(--red)}
+
+  /* кнопки движения */
+  .pad{display:grid;grid-template-columns:repeat(3,74px);grid-template-rows:repeat(2,60px);gap:8px;justify-content:center;margin:10px auto 2px;touch-action:none}
+  .pad button{background:var(--panel2);color:var(--ink);font-size:1.6rem;border:1px solid var(--line);box-shadow:0 3px 0 #000;touch-action:none}
+  .pad button.on{background:#4a2f17;transform:translateY(2px);box-shadow:0 1px 0 #000}
+  .pad .tl{grid-column:1;grid-row:1}.pad .fw{grid-column:2;grid-row:1}.pad .tr{grid-column:3;grid-row:1}.pad .bk{grid-column:2;grid-row:2}
+  .hint{text-align:center;color:var(--mute);font-size:.8rem}
+
+  .overlay{position:fixed;inset:0;background:#000d;display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+  .overlay.active{display:flex}
+  .result{max-width:440px;width:100%;margin:0;text-align:center;animation:pop .3s}
+  @keyframes pop{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
+  .result .big{font-size:3.2rem}
+  .result h2{font:700 1.8rem var(--serif);margin:6px 0}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+  .stat{border:2px solid #3a241255;border-radius:8px;padding:8px}
+  .stat b{display:block;font-size:1.4rem}
+  .stat span{font-size:.75rem;opacity:.7}
+  .stars{font-size:1.8rem;letter-spacing:4px;margin:4px 0}
+</style>
+</head>
+<body>
+
+<!-- ===== ДО СТАРТА ===== -->
+<section id="start" class="screen active">
+  <div class="scroll">
+    <h1>Храм Солнечного камня</h1>
+    <div class="sub">3D-приключение от первого лица</div>
+    <p>Под горами спит древний храм. В его коридорах лежат три осколка Солнечного камня. Твой факел горит недолго, а во тьме бродит каменный Страж.</p>
+    <ul>
+      <li><b>Цель:</b> собери 3 осколка 💎 и коснись золотых врат с символом солнца.</li>
+      <li><b>Факел 🔥</b> горит каждую секунду. Чем меньше масла, тем короче свет. Погаснет — проигрыш.</li>
+      <li><b>Страж 🗿</b> идёт за тобой, если ты рядом. Поймает — −1 ❤ и вернётся в логово. Края экрана краснеют, когда он близко.</li>
+      <li><b>Ловушки</b> скрыты в полу: наступил — −1 ❤.</li>
+      <li>Запертую дверь открывает ключ: просто подойди к ней вплотную.</li>
+    </ul>
+    <div class="legend">
+      <span>💎 осколок</span><span>🗝️ ключ</span>
+      <span>🛢️ масло +30 с</span><span>🌿 трава +1 ❤</span>
+      <span>⚠️ найденная ловушка</span><span>🗺️ мини-карта в углу</span>
+    </div>
+    <p style="font-size:.9rem;opacity:.85"><b>Управление:</b> удерживай кнопки ▲ ▼ ⟲ ⟳ под экраном или веди пальцем/мышью по картинке, чтобы повернуться. На компьютере также работают WASD и стрелки.</p>
+    <div class="center"><button class="btn" id="startBtn">Спуститься в храм</button></div>
+  </div>
+</section>
+
+<!-- ===== ИГРА ===== -->
+<section id="game" class="screen">
+  <div class="hud">
+    <div class="it">❤ <span id="hHp">3</span></div>
+    <div class="it">💎 <span id="hShards">0/3</span></div>
+    <div class="it">🗝️ <span id="hKey">нет</span></div>
+    <div class="it">⏱ <span id="hTime">0</span></div>
+    <div class="torchbar" id="torchbar">🔥 <div class="bar"><i id="hTorch"></i></div><span id="hTorchN">70</span></div>
+  </div>
+
+  <div class="viewwrap" id="viewwrap">
+    <canvas id="view"></canvas>
+    <canvas id="mini"></canvas>
+    <div class="vignette" id="vignette"></div>
+    <div class="flash" id="flash"></div>
+    <div class="cross"></div>
+  </div>
+  <div class="log" id="log"></div>
+
+  <div class="pad" id="pad">
+    <button class="tl" data-act="left" aria-label="Повернуть влево">⟲</button>
+    <button class="fw" data-act="fwd" aria-label="Вперёд">▲</button>
+    <button class="tr" data-act="right" aria-label="Повернуть вправо">⟳</button>
+    <button class="bk" data-act="back" aria-label="Назад">▼</button>
+  </div>
+  <div class="hint">Удерживай кнопки · веди по экрану, чтобы оглядеться</div>
+</section>
+
+<!-- ===== РЕЗУЛЬТАТ ===== -->
+<div class="overlay" id="overlay">
+  <div class="scroll result">
+    <div class="big" id="rIcon">🏆</div>
+    <h2 id="rTitle"></h2>
+    <div class="stars" id="rStars"></div>
+    <p id="rText"></p>
+    <div class="stats">
+      <div class="stat"><b id="rShards">0/3</b><span>осколков</span></div>
+      <div class="stat"><b id="rTime">0</b><span>секунд</span></div>
+      <div class="stat"><b id="rScore">0</b><span>очков</span></div>
+    </div>
+    <button class="btn" id="againBtn">Заново</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // # стена · @ старт · E врата · S осколок · K ключ · D дверь · O масло · H трава · T ловушка · G логово Стража
+  const MAP = [
+    "###############",
+    "#@..#....O#..S#",
+    "#.#.#.###.#.#.#",
+    "#.#...#...T.#.#",
+    "#.#####.#####.#",
+    "#...T...#..H#.#",
+    "###.###.#.#.#.#",
+    "#K#...#G..#...#",
+    "#.###.###.###D#",
+    "#...TO#S..#E.S#",
+    "###############"
+  ];
+  const MW = MAP[0].length, MH = MAP.length;
+  const RW = 320, RH = 200;                // внутреннее разрешение 3D-вида
+  const START_TORCH = 70, OIL = 30, MAX_HP = 3, NEED = 3;
+  const SPEED = 2.4, TURN = 2.4, RADIUS = 0.22;
+  const G_CHASE = 1.45, G_WANDER = 0.85;
+
+  const $ = id => document.getElementById(id);
+  const view = $("view"), ctx = view.getContext("2d");
+  view.width = RW; view.height = RH;
+  ctx.imageSmoothingEnabled = false;
+  const mini = $("mini"), mctx = mini.getContext("2d");
+  const MS = 6; mini.width = MW*MS; mini.height = MH*MS;
+
+  // ---------- процедурные текстуры ----------
+  let seed = 7;
+  const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+  function tex(draw){ const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); draw(g); return c; }
+
+  const TEX_STONE = tex(g => {
+    g.fillStyle = "#2a1f17"; g.fillRect(0,0,64,64);
+    for(let r=0;r<4;r++){
+      const off = r%2 ? 16 : 0;
+      for(let x=-off; x<64; x+=32){
+        const v = rnd();
+        g.fillStyle = "rgb(" + (95+v*30|0) + "," + (74+v*22|0) + "," + (55+v*14|0) + ")";
+        g.fillRect(x+1, r*16+1, 30, 14);
+        g.fillStyle = "rgba(255,230,190,.08)"; g.fillRect(x+1, r*16+1, 30, 2);
+      }
+    }
+    for(let i=0;i<500;i++){ g.fillStyle = "rgba(0,0,0," + (rnd()*0.3).toFixed(2) + ")"; g.fillRect(rnd()*64|0, rnd()*64|0, 1, 1); }
+  });
+  const TEX_DOOR = tex(g => {
+    const cols = ["#6b4423","#5c3a1e","#71482a","#603d20"];
+    for(let i=0;i<4;i++){ g.fillStyle = cols[i]; g.fillRect(i*16,0,16,64); g.fillStyle = "#2b1a0c"; g.fillRect(i*16,0,1,64); }
+    g.fillStyle = "#3b3b40"; g.fillRect(0,9,64,6); g.fillRect(0,49,64,6);
+    g.fillStyle = "#8a8a90"; for(let x=4;x<64;x+=12){ g.fillRect(x,11,2,2); g.fillRect(x,51,2,2); }
+    g.fillStyle = "#c99a2e"; g.beginPath(); g.arc(32,32,6,0,7); g.fill();
+    g.fillStyle = "#1a0f06"; g.fillRect(31,29,3,7);
+  });
+  function gateTex(open){
+    return tex(g => {
+      g.drawImage(TEX_STONE,0,0);
+      g.fillStyle = open ? "#3d2a08" : "#120c08";
+      g.beginPath(); g.moveTo(10,64); g.lineTo(10,26); g.arc(32,26,22,Math.PI,0); g.lineTo(54,64); g.fill();
+      g.strokeStyle = "#c99a2e"; g.lineWidth = 3; g.stroke();
+      const sun = g.createRadialGradient(32,30,2,32,30,16);
+      sun.addColorStop(0, open ? "#fff3b0" : "#8a6a28"); sun.addColorStop(1, open ? "#f2b54400" : "#3a2a1000");
+      g.fillStyle = sun; g.beginPath(); g.arc(32,30,16,0,7); g.fill();
+      [[22,46],[32,50],[42,46]].forEach(([x,y]) => { g.fillStyle = open ? "#7fd8ff" : "#050505"; g.beginPath(); g.arc(x,y,3.5,0,7); g.fill(); });
+    });
+  }
+  const TEX_GATE = gateTex(false), TEX_GATE_OPEN = gateTex(true);
+  function emojiTex(e){
+    return tex(g => { g.font = "50px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(e,32,36); });
+  }
+  const SPR = {S:emojiTex("💎"),K:emojiTex("🗝️"),O:emojiTex("🛢️"),H:emojiTex("🌿"),G:emojiTex("🗿"),T:emojiTex("⚠️")};
+
+  // ---------- состояние ----------
+  let S = null, rafId = 0, token = 0, last = 0;
+  const input = {fwd:false,back:false,left:false,right:false};
+  const keys = new Set();
+  const zbuf = new Float32Array(RW);
+
+  function newState(){
+    const st = {
+      phase:"play", grid:[], items:[], traps:new Set(), found:[], seen:new Set(),
+      x:1.5, y:1.5, a:0, hp:MAX_HP, torch:START_TORCH, shards:0, hasKey:false,
+      time:0, inv:0, msg:"", msgWarn:false, msgT:0, bumpT:0, cell:"",
+      g:{x:0,y:0,lx:0,ly:0,tx:0,ty:0,chase:false,px:-1,py:-1}
+    };
+    for(let y=0;y<MH;y++){
+      const row = [];
+      for(let x=0;x<MW;x++){
+        const c = MAP[y][x];
+        row.push(c === "#" || c === "D" || c === "E" ? c : ".");
+        if(c === "@"){ st.x = x+.5; st.y = y+.5; }
+        if(c === "G"){ st.g.x = st.g.lx = st.g.tx = x+.5; st.g.y = st.g.ly = st.g.ty = y+.5; }
+        if("SKOH".includes(c)) st.items.push({t:c, x:x+.5, y:y+.5});
+        if(c === "T") st.traps.add(x+","+y);
+      }
+      st.grid.push(row);
+    }
+    st.cell = Math.floor(st.x)+","+Math.floor(st.y);
+    return st;
+  }
+
+  function show(id){
+    ["start","game"].forEach(s => $(s).classList.toggle("active", s === id));
+    window.scrollTo(0,0);
+  }
+
+  function startGame(){
+    cancelAnimationFrame(rafId);
+    token++;
+    const my = token;
+    S = newState();
+    clearInput();
+    $("overlay").classList.remove("active");
+    $("flash").classList.remove("on");
+    show("game");
+    say("Ты спускаешься во тьму. Факел потрескивает. Где-то далеко скрежещет камень…", false, 5);
+    last = performance.now();
+    render(); hud();
+    rafId = requestAnimationFrame(function frame(now){
+      if(my !== token || !S || S.phase !== "play") return;
+      const dt = Math.min(0.05, (now - last)/1000);
+      last = now;
+      update(dt);
+      render(); hud();
+      if(S.phase === "play") rafId = requestAnimationFrame(frame);
+    });
+  }
+
+  function say(text, warn, sec){
+    S.msg = text; S.msgWarn = !!warn; S.msgT = sec || 3.5;
+    const l = $("log"); l.textContent = text; l.classList.toggle("warn", !!warn);
+  }
+
+  // ---------- мир ----------
+  const solid = (c) => c === "#" || c === "D" || c === "E";
+  function cellAt(x,y){
+    const cx = Math.floor(x), cy = Math.floor(y);
+    if(cx<0||cy<0||cx>=MW||cy>=MH) return "#";
+    return S.grid[cy][cx];
+  }
+  function blockedAt(x,y){
+    for(const [ox,oy] of [[-RADIUS,-RADIUS],[RADIUS,-RADIUS],[-RADIUS,RADIUS],[RADIUS,RADIUS]]){
+      const c = cellAt(x+ox, y+oy);
+      if(solid(c)) return {c, cx:Math.floor(x+ox), cy:Math.floor(y+oy)};
+    }
+    return null;
+  }
+
+  function bump(b){
+    if(S.bumpT > 0) return;
+    S.bumpT = 0.9;
+    if(b.c === "D"){
+      if(S.hasKey){ S.grid[b.cy][b.cx] = "."; S.hasKey = false; say("Ключ со скрипом поворачивается — дверь открыта!"); }
+      else say("Массивная дверь заперта. Нужен ключ 🗝️.", true);
+    } else if(b.c === "E"){
+      if(S.shards >= NEED) finish(true);
+      else say("Врата запечатаны: на них " + NEED + " пустые выемки. Осколков: " + S.shards + "/" + NEED + ".", true);
+    }
+  }
+
+  function hurt(text){
+    S.hp--;
+    const f = $("flash"); f.classList.add("on");
+    requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove("on")));
+    say(text, true);
+  }
+
+  // ---------- обновление ----------
+  function update(dt){
+    S.time += dt;
+    S.torch -= dt;
+    S.inv = Math.max(0, S.inv - dt);
+    S.bumpT = Math.max(0, S.bumpT - dt);
+    if(S.msgT > 0){ S.msgT -= dt; if(S.msgT <= 0){ $("log").textContent = ""; $("log").classList.remove("warn"); } }
+
+    // поворот и движение
+    let turn = 0, move = 0;
+    if(input.left || keys.has("left")) turn -= 1;
+    if(input.right || keys.has("right")) turn += 1;
+    if(input.fwd || keys.has("fwd")) move += 1;
+    if(input.back || keys.has("back")) move -= 0.7;
+    S.a += turn * TURN * dt;
+    if(move){
+      const dx = Math.cos(S.a)*SPEED*move*dt, dy = Math.sin(S.a)*SPEED*move*dt;
+      const bx = blockedAt(S.x+dx, S.y); if(!bx) S.x += dx; else bump(bx);
+      const by = blockedAt(S.x, S.y+dy); if(!by) S.y += dy; else bump(by);
+      if(S.phase !== "play") return;
+    }
+
+    // новая клетка: ловушки
+    const ck = Math.floor(S.x)+","+Math.floor(S.y);
+    if(ck !== S.cell){
+      S.cell = ck;
+      if(S.traps.has(ck)){
+        S.traps.delete(ck);
+        const [tx,ty] = ck.split(",").map(Number);
+        S.found.push({t:"T", x:tx+.5, y:ty+.5});
+        hurt("Щёлк! Из пола вырвались шипы: −1 ❤.");
+      }
+    }
+
+    // предметы
+    for(let i=S.items.length-1;i>=0;i--){
+      const it = S.items[i];
+      if(Math.hypot(it.x-S.x, it.y-S.y) < 0.45){
+        S.items.splice(i,1);
+        if(it.t === "S"){ S.shards++; say("Осколок Солнечного камня! (" + S.shards + "/" + NEED + ")" + (S.shards === NEED ? " Где-то загорелись врата ☀️." : "")); }
+        if(it.t === "K"){ S.hasKey = true; say("Ты нашёл тяжёлый бронзовый ключ 🗝️."); }
+        if(it.t === "O"){ S.torch += OIL; say("Масло для факела: +" + OIL + " с 🔥. Стало светлее."); }
+        if(it.t === "H"){
+          if(S.hp < MAX_HP){ S.hp++; say("Целебная трава: +1 ❤."); }
+          else say("Целебная трава… но ты и так полон сил.");
+        }
+      }
+    }
+
+    updateGuardian(dt);
+
+    if(S.hp <= 0){ finish(false, "hp"); return; }
+    if(S.torch <= 0){ S.torch = 0; finish(false, "torch"); return; }
+    if(S.torch < 15 && S.torch + dt >= 15) say("Факел тускнеет — масла почти не осталось!", true);
+  }
+
+  // ---------- Страж ----------
+  function gPass(x,y){ return x>=0&&y>=0&&x<MW&&y<MH && !solid(S.grid[y][x]); }
+  function pathStep(sx,sy,tx,ty,limit){
+    if(sx===tx && sy===ty) return null;
+    const prev = new Map(); const q = [[sx,sy,0]]; prev.set(sx+","+sy, null);
+    while(q.length){
+      const [x,y,d] = q.shift();
+      if(d >= limit) continue;
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const nx=x+dx, ny=y+dy, k=nx+","+ny;
+        if(!gPass(nx,ny) || prev.has(k)) continue;
+        prev.set(k, [x,y]);
+        if(nx===tx && ny===ty){
+          let cur = [nx,ny], p = prev.get(k);
+          while(p && !(p[0]===sx && p[1]===sy)){ cur = p; p = prev.get(p[0]+","+p[1]); }
+          return cur;
+        }
+        q.push([nx,ny,d+1]);
+      }
+    }
+    return null;
+  }
+  function updateGuardian(dt){
+    const g = S.g;
+    const dTarget = Math.hypot(g.tx-g.x, g.ty-g.y);
+    if(dTarget < 0.04){
+      g.x = g.tx; g.y = g.ty;
+      const gx = Math.floor(g.x), gy = Math.floor(g.y);
+      const step = pathStep(gx, gy, Math.floor(S.x), Math.floor(S.y), 7);
+      if(step){ g.chase = true; g.tx = step[0]+.5; g.ty = step[1]+.5; }
+      else {
+        g.chase = false;
+        let opts = [[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy]) => [gx+dx,gy+dy]).filter(([x,y]) => gPass(x,y));
+        const fwd = opts.filter(([x,y]) => !(x===g.px && y===g.py));
+        if(fwd.length) opts = fwd;
+        if(opts.length){ const p = opts[Math.floor(Math.random()*opts.length)]; g.tx = p[0]+.5; g.ty = p[1]+.5; }
+        if(Math.floor(S.x)===gx && Math.floor(S.y)===gy){ g.tx = S.x; g.ty = S.y; }
+      }
+      g.px = gx; g.py = gy;
+    } else {
+      const sp = (g.chase ? G_CHASE : G_WANDER) * dt;
+      const k = Math.min(1, sp/dTarget);
+      g.x += (g.tx-g.x)*k; g.y += (g.ty-g.y)*k;
+    }
+    const dist = Math.hypot(g.x-S.x, g.y-S.y);
+    $("vignette").style.opacity = dist < 5 ? ((5-dist)/5*0.85).toFixed(2) : 0;
+    if(dist < 0.5 && S.inv <= 0){
+      S.inv = 1.5;
+      g.x = g.tx = g.lx; g.y = g.ty = g.ly; g.chase = false;
+      hurt("Страж настиг тебя! −1 ❤. Он с грохотом отступил в логово.");
+    }
+  }
+
+  // ---------- 3D-рендер (рейкастинг) ----------
+  function render(){
+    const t = S.time;
+    const flick = 1 + Math.sin(t*14)*0.025 + Math.sin(t*5.3)*0.02;
+    const light = Math.max(1.6, Math.min(7, 1.8 + S.torch/12)) * flick;
+    const bright = Math.min(1, light/7);
+
+    // потолок и пол
+    const cg = ctx.createLinearGradient(0,0,0,RH/2);
+    cg.addColorStop(0,"#000"); cg.addColorStop(1, "rgb(" + (26*bright|0) + "," + (16*bright|0) + "," + (10*bright|0) + ")");
+    ctx.fillStyle = cg; ctx.fillRect(0,0,RW,RH/2);
+    const fg = ctx.createLinearGradient(0,RH/2,0,RH);
+    fg.addColorStop(0,"#000"); fg.addColorStop(1, "rgb(" + (92*bright|0) + "," + (60*bright|0) + "," + (32*bright|0) + ")");
+    ctx.fillStyle = fg; ctx.fillRect(0,RH/2,RW,RH/2);
+
+    const dirX = Math.cos(S.a), dirY = Math.sin(S.a);
+    const plX = -dirY*0.66, plY = dirX*0.66;
+    S.seen.add(Math.floor(S.x)+","+Math.floor(S.y));
+
+    for(let x=0;x<RW;x++){
+      const cam = 2*x/RW - 1;
+      const rx = dirX + plX*cam, ry = dirY + plY*cam;
+      let mx = Math.floor(S.x), my = Math.floor(S.y);
+      const ddx = rx === 0 ? 1e30 : Math.abs(1/rx), ddy = ry === 0 ? 1e30 : Math.abs(1/ry);
+      let stepX, stepY, sdx, sdy;
+      if(rx < 0){ stepX = -1; sdx = (S.x-mx)*ddx; } else { stepX = 1; sdx = (mx+1-S.x)*ddx; }
+      if(ry < 0){ stepY = -1; sdy = (S.y-my)*ddy; } else { stepY = 1; sdy = (my+1-S.y)*ddy; }
+      let side = 0, c = ".", guard = 0;
+      while(guard++ < 64){
+        const near = Math.min(sdx, sdy);
+        if(sdx < sdy){ sdx += ddx; mx += stepX; side = 0; } else { sdy += ddy; my += stepY; side = 1; }
+        if(mx<0||my<0||mx>=MW||my>=MH){ c = "#"; break; }
+        if(near < light) S.seen.add(mx+","+my);
+        c = S.grid[my][mx];
+        if(solid(c)) break;
+      }
+      const perp = Math.max(0.05, side === 0 ? sdx-ddx : sdy-ddy);
+      zbuf[x] = perp;
+      const lh = RH/perp, top = RH/2 - lh/2;
+      let wx = side === 0 ? S.y + perp*ry : S.x + perp*rx;
+      wx -= Math.floor(wx);
+      let tx = Math.floor(wx*64);
+      if(side === 0 && rx > 0) tx = 63 - tx;
+      if(side === 1 && ry < 0) tx = 63 - tx;
+      const gateOpen = c === "E" && S.shards >= NEED;
+      const tex = c === "D" ? TEX_DOOR : c === "E" ? (gateOpen ? TEX_GATE_OPEN : TEX_GATE) : TEX_STONE;
+      ctx.drawImage(tex, tx, 0, 1, 64, x, top, 1, lh);
+      let L = Math.max(0, 1 - perp/light);
+      if(side === 1) L *= 0.78;
+      if(gateOpen) L = Math.max(L, 0.55 + Math.sin(t*4)*0.1);
+      ctx.fillStyle = "rgba(6,3,1," + (1-L).toFixed(3) + ")";
+      ctx.fillRect(x, top, 1, lh);
+    }
+
+    // спрайты
+    const sprites = S.items.map(i => ({t:i.t, x:i.x, y:i.y, s:0.42, bob:true}))
+      .concat(S.found.map(f => ({t:"T", x:f.x, y:f.y, s:0.3})))
+      .concat([{t:"G", x:S.g.x, y:S.g.y, s:0.95}]);
+    sprites.forEach(sp => sp.d = (sp.x-S.x)**2 + (sp.y-S.y)**2);
+    sprites.sort((a,b) => b.d - a.d);
+    const inv = 1/(plX*dirY - dirX*plY);
+    for(const sp of sprites){
+      const sx = sp.x - S.x, sy = sp.y - S.y;
+      const tX = inv*(dirY*sx - dirX*sy);
+      const tY = inv*(-plY*sx + plX*sy);
+      if(tY <= 0.15) continue;
+      const dist = Math.sqrt(sp.d);
+      let alpha = Math.max(0, 1 - dist/light);
+      if(sp.t === "S") alpha = Math.max(alpha, Math.min(0.35, 1.2 - dist/light)); // осколки слегка светятся во тьме
+      if(alpha <= 0.02) continue;
+      const scrX = (RW/2)*(1 + tX/tY);
+      const full = RH/tY, size = full*sp.s;
+      const floorY = RH/2 + full/2;
+      let top = floorY - size - (sp.t === "G" ? 0 : full*0.04);
+      if(sp.bob) top += Math.sin(t*3 + sp.x)*size*0.06;
+      const left = scrX - size/2;
+      const x0 = Math.max(0, Math.floor(left)), x1 = Math.min(RW-1, Math.floor(left+size));
+      ctx.globalAlpha = alpha;
+      const img = SPR[sp.t];
+      for(let x=x0; x<=x1; x++){
+        if(tY >= zbuf[x]) continue;
+        const tx = Math.min(63, Math.floor((x-left)/size*64));
+        ctx.drawImage(img, tx, 0, 1, 64, x, top, 1, size);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    drawMini(dirX, dirY);
+  }
+
+  function drawMini(dirX, dirY){
+    mctx.fillStyle = "#000"; mctx.fillRect(0,0,mini.width,mini.height);
+    for(const k of S.seen){
+      const [x,y] = k.split(",").map(Number);
+      const c = S.grid[y][x];
+      mctx.fillStyle = c === "#" ? "#6b5442" : c === "D" ? "#a0602a" : c === "E" ? "#f2b544" : "#2a1c12";
+      mctx.fillRect(x*MS, y*MS, MS, MS);
+    }
+    for(const it of S.items){
+      if(!S.seen.has(Math.floor(it.x)+","+Math.floor(it.y))) continue;
+      mctx.fillStyle = it.t === "S" ? "#7fd8ff" : it.t === "K" ? "#f2d544" : it.t === "O" ? "#e8702a" : "#6fbf73";
+      mctx.fillRect(it.x*MS-1.5, it.y*MS-1.5, 3, 3);
+    }
+    const px = S.x*MS, py = S.y*MS;
+    mctx.strokeStyle = "#fff"; mctx.lineWidth = 1.5;
+    mctx.beginPath(); mctx.moveTo(px,py); mctx.lineTo(px+dirX*5, py+dirY*5); mctx.stroke();
+    mctx.fillStyle = "#f2b544"; mctx.beginPath(); mctx.arc(px,py,2.2,0,7); mctx.fill();
+  }
+
+  // ---------- HUD ----------
+  let hudCache = "";
+  function hud(){
+    const s = [S.hp, S.shards, S.hasKey, Math.floor(S.time), Math.ceil(S.torch)].join("|");
+    if(s === hudCache) return;
+    hudCache = s;
+    $("hHp").textContent = Math.max(0,S.hp);
+    $("hShards").textContent = S.shards + "/" + NEED;
+    $("hKey").textContent = S.hasKey ? "есть" : "нет";
+    $("hTime").textContent = Math.floor(S.time) + " с";
+    $("hTorchN").textContent = Math.max(0, Math.ceil(S.torch));
+    $("hTorch").style.width = Math.min(100, Math.max(0,S.torch)/START_TORCH*100) + "%";
+    $("torchbar").classList.toggle("low", S.torch <= 15);
+  }
+
+  // ---------- конец ----------
+  function finish(win, reason){
+    if(!S || S.phase !== "play") return;
+    S.phase = "over";
+    cancelAnimationFrame(rafId);
+    clearInput();
+    render(); hudCache = ""; hud();
+    $("vignette").style.opacity = 0;
+    const secs = Math.floor(S.time);
+    const score = S.shards*100 + (win ? 200 + S.hp*50 + Math.floor(S.torch)*3 : 0);
+    let title, text, icon, stars = 0;
+    if(win){
+      icon = "🏆"; title = "Ты выбрался!";
+      stars = 1 + (S.hp === MAX_HP ? 1 : 0) + (secs <= 100 ? 1 : 0);
+      text = "Три осколка сложились в Солнечный камень, и врата выпустили тебя к рассвету. " +
+        (stars === 3 ? "Безупречная вылазка!" : stars === 2 ? "Отличная вылазка." : "Выжил — и это главное.") +
+        " Звёзды: победа, полное здоровье, не дольше 100 секунд.";
+    } else if(reason === "torch"){
+      icon = "🕯️"; title = "Факел погас";
+      text = "Тьма сомкнулась вокруг. Без света храм не отпускает своих гостей.";
+    } else {
+      icon = "🗿"; title = "Храм победил";
+      text = "Раны и ловушки оказались сильнее. Страж вернулся охранять осколки.";
+    }
+    $("rIcon").textContent = icon;
+    $("rTitle").textContent = title;
+    $("rStars").textContent = win ? "★".repeat(stars) + "☆".repeat(3-stars) : "";
+    $("rText").textContent = text;
+    $("rShards").textContent = S.shards + "/" + NEED;
+    $("rTime").textContent = secs;
+    $("rScore").textContent = score;
+    $("overlay").classList.add("active");
+  }
+
+  // ---------- управление ----------
+  function clearInput(){
+    for(const k in input) input[k] = false;
+    keys.clear();
+    document.querySelectorAll(".pad button").forEach(b => b.classList.remove("on"));
+  }
+
+  document.querySelectorAll(".pad button").forEach(b => {
+    const act = b.dataset.act;
+    const on = e => {
+      e.preventDefault();
+      if(!S || S.phase !== "play") return;
+      input[act] = true; b.classList.add("on");
+      try{ b.setPointerCapture(e.pointerId); }catch(_){}
+    };
+    const off = () => { input[act] = false; b.classList.remove("on"); };
+    b.addEventListener("pointerdown", on);
+    b.addEventListener("pointerup", off);
+    b.addEventListener("pointercancel", off);
+    b.addEventListener("lostpointercapture", off);
+    b.addEventListener("contextmenu", e => e.preventDefault());
+  });
+
+  // поворот перетаскиванием по экрану
+  let drag = null;
+  const wrap = $("viewwrap");
+  wrap.addEventListener("pointerdown", e => {
+    if(!S || S.phase !== "play") return;
+    drag = {id:e.pointerId, x:e.clientX};
+    try{ wrap.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  wrap.addEventListener("pointermove", e => {
+    if(!drag || drag.id !== e.pointerId || !S || S.phase !== "play") return;
+    const dx = e.clientX - drag.x; drag.x = e.clientX;
+    S.a += dx * (4.2 / wrap.clientWidth);
+  });
+  const endDrag = () => { drag = null; };
+  wrap.addEventListener("pointerup", endDrag);
+  wrap.addEventListener("pointercancel", endDrag);
+
+  const KEYMAP = {ArrowUp:"fwd",KeyW:"fwd",ArrowDown:"back",KeyS:"back",ArrowLeft:"left",KeyA:"left",ArrowRight:"right",KeyD:"right"};
+  document.addEventListener("keydown", e => {
+    const k = KEYMAP[e.code];
+    if(!k || !S || S.phase !== "play") return;
+    e.preventDefault(); keys.add(k);
+  });
+  document.addEventListener("keyup", e => { const k = KEYMAP[e.code]; if(k) keys.delete(k); });
+  window.addEventListener("blur", clearInput);
+  document.addEventListener("visibilitychange", () => { if(document.hidden) clearInput(); last = performance.now(); });
+
+  $("startBtn").addEventListener("click", startGame);
+  $("againBtn").addEventListener("click", startGame);
+})();
+</script>
+</body>
+</html>
